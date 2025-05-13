@@ -30,7 +30,10 @@ export type QuestionType =
   | 'checkbox'
   | 'date'
   | 'dropdown'
-  | 'matrix';
+  | 'matrix'
+  | 'multiselect'
+  | 'toggle'
+  | 'slider';
 
 export type MatrixColumnType = 'radio' | 'checkbox';
 
@@ -71,6 +74,9 @@ export interface Question {
   };
   subQuestions?: Question[];
   matrixData?: MatrixData;
+  label?: string;
+  description?: string;
+  step?: number;
 }
 
 export interface QuestionTemplate {

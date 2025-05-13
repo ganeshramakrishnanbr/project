@@ -11,6 +11,9 @@ import TimeQuestion from './TimeQuestion';
 import DatePicker from './DatePicker';
 import DropdownQuestion from './DropdownQuestion';
 import MatrixQuestion from './MatrixQuestion';
+import MultiselectQuestion from './MultiselectQuestion';
+import ToggleQuestion from './ToggleQuestion';
+import SliderQuestion from './SliderQuestion';
 
 const isArrayOfStrings = (value: any): value is string[] => {
   return Array.isArray(value) && value.every(item => typeof item === 'string');
@@ -70,11 +73,10 @@ const QuestionRenderer: React.FC<QuestionRendererProps> = ({
     // Special handling for matrix type dependencies
     const dependentQuestion = questions.find((q: Question) => q.id === questionId);
     if (dependentQuestion?.type === 'matrix') {
-      // Type assertion for matrix value
-      const matrixValue = value as Record<string, Record<string, boolean>>;
+      // Safely cast matrix values
+      const matrixValue = value as unknown as Record<string, Record<string, boolean>>;
       const matrixAnswer = answer.value as Record<string, Record<string, boolean>>;
       
-      // Check if any of the selected combinations match
       const matches = Object.entries(matrixValue).some(([rowId, columns]) => {
         if (!matrixAnswer[rowId]) return false;
         return Object.entries(columns).some(([columnId, isSelected]) => {
@@ -86,13 +88,16 @@ const QuestionRenderer: React.FC<QuestionRendererProps> = ({
     } else if (Array.isArray(value)) {
       // Handle array values (e.g., for checkbox questions)
       if (Array.isArray(answer.value)) {
-        if (!value.some(v => answer.value.includes(v))) return null;
+        // Safe type check for array includes
+        const answerArray = answer.value as any[];
+        if (!value.some(v => answerArray.includes(v))) return null;
       } else {
-        if (!value.includes(answer.value)) return null;
+        if (!value.includes(answer.value as string)) return null;
       }
     } else if (Array.isArray(answer.value)) {
       // Handle case where the answer is an array but the condition value isn't
-      if (!answer.value.includes(value)) return null;
+      const answerArray = answer.value as any[];
+      if (!answerArray.includes(value)) return null;
     } else {
       // Handle simple value comparison
       const answerStr = valueToString(answer.value);
@@ -195,6 +200,33 @@ const QuestionRenderer: React.FC<QuestionRendererProps> = ({
             onChange={value => handleAnswerChange(value.value)}
             required={required}
             mode={mode}
+          />
+        );
+      case 'multiselect':
+        return (
+          <MultiselectQuestion
+            question={question}
+            value={isArrayOfStrings(answer?.value) ? answer.value : []}
+            onChange={(value) => handleAnswerChange(value)}
+            required={required}
+          />
+        );
+      case 'toggle':
+        return (
+          <ToggleQuestion 
+            question={question} 
+            value={answers[question.id]?.value as boolean} 
+            onChange={(value) => handleAnswerChange(value)}
+            required={required}
+          />
+        );
+      case 'slider':
+        return (
+          <SliderQuestion
+            question={question}
+            value={answer?.value as number}
+            onChange={(val, unit) => handleAnswerChange(val)}
+            required={required}
           />
         );
       default:

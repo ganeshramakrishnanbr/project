@@ -39,6 +39,155 @@ const PropertyEditor: React.FC<PropertyEditorProps> = ({ question, questions, on
     handleChange('id', newId);
   };
 
+  const renderDependencyValueInput = (dependentQuestion: Question) => {
+    switch (dependentQuestion.type) {
+      case 'matrix':
+        if (!dependentQuestion.matrixData) return null;
+        const matrixValue = (question.condition?.value || {}) as Record<string, Record<string, boolean>>;
+        return (
+          <div className="space-y-4">
+            <div className="border border-gray-200 rounded-lg p-4">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {dependentQuestion.matrixData?.optionsLabel || 'Options'}
+                    </th>
+                    {(dependentQuestion.matrixData?.columns || []).map(column => (
+                      <th key={column.id} className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">
+                        {column.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {(dependentQuestion.matrixData?.rows || []).map(row => (
+                    <tr key={row.id}>
+                      <td className="px-4 py-2 text-sm text-gray-900">
+                        {row.text}
+                      </td>
+                      {(dependentQuestion.matrixData?.columns || []).map(column => (
+                        <td key={column.id} className="px-4 py-2 text-center">
+                          <input
+                            type="checkbox"
+                            checked={!!matrixValue[row.id]?.[column.id]}
+                            onChange={(e) => {
+                              const newValue: Record<string, Record<string, boolean>> = { 
+                                ...matrixValue 
+                              };
+                              if (!newValue[row.id]) {
+                                newValue[row.id] = {};
+                              }
+                              if (e.target.checked) {
+                                newValue[row.id][column.id] = true;
+                              } else {
+                                delete newValue[row.id][column.id];
+                                if (Object.keys(newValue[row.id]).length === 0) {
+                                  delete newValue[row.id];
+                                }
+                              }
+                              handleChange('condition', {
+                                ...question.condition,
+                                value: newValue
+                              });
+                            }}
+                            className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      case 'multiselect':
+      case 'checkbox':
+        return (
+          <div className="space-y-2">
+            {dependentQuestion.options?.map(option => (
+              <label key={option} className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={Array.isArray(question.condition?.value) &&
+                          question.condition.value.includes(option)}
+                  onChange={(e) => {
+                    const values = Array.isArray(question.condition?.value) 
+                      ? [...question.condition.value]
+                      : [];
+                    if (e.target.checked) {
+                      values.push(option);
+                    } else {
+                      const index = values.indexOf(option);
+                      if (index > -1) values.splice(index, 1);
+                    }
+                    handleChange('condition', {
+                      ...question.condition,
+                      value: values
+                    });
+                  }}
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mr-2"
+                />
+                {option}
+              </label>
+            ))}
+          </div>
+        );
+
+      case 'radio':
+      case 'dropdown':
+        return (
+          <select
+            value={String(question.condition?.value || '')}
+            onChange={(e) => {
+              handleChange('condition', {
+                ...question.condition,
+                value: e.target.value
+              });
+            }}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          >
+            <option value="">Select a value</option>
+            {dependentQuestion.options?.map(option => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+        );
+      case 'boolean':
+        return (
+          <select
+            value={String(question.condition?.value || '')}
+            onChange={(e) => {
+              handleChange('condition', {
+                ...question.condition,
+                value: e.target.value === 'true'
+              });
+            }}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          >
+            <option value="">Select a value</option>
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+        );
+      default:
+        return (
+          <input
+            type="text"
+            value={String(question.condition?.value || '')}
+            onChange={(e) => {
+              handleChange('condition', {
+                ...question.condition,
+                value: e.target.value
+              });
+            }}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          />
+        );
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="space-y-4">
@@ -145,7 +294,7 @@ const PropertyEditor: React.FC<PropertyEditorProps> = ({ question, questions, on
           />
         </div>
 
-        {(question.type === 'radio' || question.type === 'checkbox' || question.type === 'dropdown') && (
+        {(question.type === 'radio' || question.type === 'checkbox' || question.type === 'dropdown' || question.type === 'multiselect') && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Options</label>
             <div className="space-y-2">
@@ -244,150 +393,7 @@ const PropertyEditor: React.FC<PropertyEditorProps> = ({ question, questions, on
                 );
                 if (!dependentQuestion) return null;
 
-                switch (dependentQuestion.type) {
-                  case 'matrix':
-                    if (!dependentQuestion.matrixData) return null;
-                    const matrixValue = (question.condition?.value || {}) as Record<string, Record<string, boolean>>;
-                    return (
-                      <div className="space-y-4">
-                        <div className="border border-gray-200 rounded-lg p-4">
-                          <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  {dependentQuestion.matrixData?.optionsLabel || 'Options'}
-                                </th>
-                                {(dependentQuestion.matrixData?.columns || []).map(column => (
-                                  <th key={column.id} className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">
-                                    {column.label}
-                                  </th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                              {(dependentQuestion.matrixData?.rows || []).map(row => (
-                                <tr key={row.id}>
-                                  <td className="px-4 py-2 text-sm text-gray-900">
-                                    {row.text}
-                                  </td>
-                                  {(dependentQuestion.matrixData?.columns || []).map(column => (
-                                    <td key={column.id} className="px-4 py-2 text-center">
-                                      <input
-                                        type="checkbox"
-                                        checked={!!matrixValue[row.id]?.[column.id]}
-                                        onChange={(e) => {
-                                          const newValue: Record<string, Record<string, boolean>> = { 
-                                            ...matrixValue 
-                                          };
-                                          if (!newValue[row.id]) {
-                                            newValue[row.id] = {};
-                                          }
-                                          if (e.target.checked) {
-                                            newValue[row.id][column.id] = true;
-                                          } else {
-                                            delete newValue[row.id][column.id];
-                                            if (Object.keys(newValue[row.id]).length === 0) {
-                                              delete newValue[row.id];
-                                            }
-                                          }
-                                          handleChange('condition', {
-                                            ...question.condition,
-                                            value: newValue
-                                          });
-                                        }}
-                                        className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                      />
-                                    </td>
-                                  ))}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    );
-                  case 'checkbox':
-                    return (
-                      <div className="space-y-2">
-                        {dependentQuestion.options?.map(option => (
-                          <label key={option} className="flex items-center">
-                            <input
-                              type="checkbox"
-                              checked={Array.isArray(question.condition?.value) &&
-                                     question.condition.value.includes(option)}
-                              onChange={(e) => {
-                                const values = Array.isArray(question.condition?.value) 
-                                  ? [...question.condition.value]
-                                  : [];
-                                if (e.target.checked) {
-                                  values.push(option);
-                                } else {
-                                  const index = values.indexOf(option);
-                                  if (index > -1) values.splice(index, 1);
-                                }
-                                handleChange('condition', {
-                                  ...question.condition,
-                                  value: values
-                                });
-                              }}
-                              className="mr-2"
-                            />
-                            {option}
-                          </label>
-                        ))}
-                      </div>
-                    );
-                  case 'radio':
-                  case 'dropdown':
-                    return (
-                      <select
-                        value={String(question.condition?.value || '')}
-                        onChange={(e) => {
-                          handleChange('condition', {
-                            ...question.condition,
-                            value: e.target.value
-                          });
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                      >
-                        <option value="">Select a value</option>
-                        {dependentQuestion.options?.map(option => (
-                          <option key={option} value={option}>{option}</option>
-                        ))}
-                      </select>
-                    );
-                  case 'boolean':
-                    return (
-                      <select
-                        value={String(question.condition?.value || '')}
-                        onChange={(e) => {
-                          handleChange('condition', {
-                            ...question.condition,
-                            value: e.target.value === 'true'
-                          });
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                      >
-                        <option value="">Select a value</option>
-                        <option value="true">Yes</option>
-                        <option value="false">No</option>
-                      </select>
-                    );
-                  default:
-                    return (
-                      <input
-                        type="text"
-                        value={String(question.condition?.value || '')}
-                        onChange={(e) => {
-                          handleChange('condition', {
-                            ...question.condition,
-                            value: e.target.value
-                          });
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                      />
-                    );
-                }
+                return renderDependencyValueInput(dependentQuestion);
               })()}
             </div>
           )}

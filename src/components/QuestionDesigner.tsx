@@ -50,7 +50,9 @@ const QuestionDesigner: React.FC = () => {
       text: 'New Question',
       sectionName: 'Default Section',
       type,
-      options: type === 'radio' || type === 'checkbox' || type === 'dropdown' ? ['Option 1'] : undefined,
+      options: type === 'radio' || type === 'checkbox' || type === 'dropdown' || type === 'multiselect' 
+        ? ['Option 1'] 
+        : undefined,
       matrixData: type === 'matrix' ? {
         label: 'Matrix Question',
         columns: [
@@ -189,49 +191,50 @@ const QuestionDesigner: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="border-b bg-white shadow-sm sticky top-0 z-20">
-        <div className="w-full px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-100">
+      {/* Sticky header with shadow */}
+      <div className="sticky top-0 z-30 bg-white border-b shadow-sm">
+        <div className="max-w-[98rem] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex space-x-4">
+            <div className="flex space-x-2">
               <button
                 onClick={() => setMode('design')}
-                className={`px-3 py-2 rounded-md text-sm font-medium ${
-                  mode === 'design' ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:text-gray-900'
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  mode === 'design' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                <Settings className="h-5 w-5 inline-block mr-2" />
+                <Settings className="h-4 w-4 inline-block mr-2" />
                 Design
               </button>
               <button
                 onClick={() => setMode('preview')}
-                className={`px-3 py-2 rounded-md text-sm font-medium ${
-                  mode === 'preview' ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:text-gray-900'
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  mode === 'preview' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                <Eye className="h-5 w-5 inline-block mr-2" />
+                <Eye className="h-4 w-4 inline-block mr-2" />
                 Preview
               </button>
               <button
                 onClick={generateJson}
-                className={`px-3 py-2 rounded-md text-sm font-medium ${
-                  mode === 'json' ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:text-gray-900'
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  mode === 'json' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                <Code className="h-5 w-5 inline-block mr-2" />
+                <Code className="h-4 w-4 inline-block mr-2" />
                 JSON
               </button>
               <button
                 onClick={() => setMode('history')}
-                className={`px-3 py-2 rounded-md text-sm font-medium ${
-                  mode === 'history' ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:text-gray-900'
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  mode === 'history' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                <History className="h-5 w-5 inline-block mr-2" />
+                <History className="h-4 w-4 inline-block mr-2" />
                 History
               </button>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
               <input
                 type="file"
                 accept=".json"
@@ -242,14 +245,14 @@ const QuestionDesigner: React.FC = () => {
               />
               <label
                 htmlFor="json-import"
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 cursor-pointer flex items-center"
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 cursor-pointer flex items-center transition-colors"
               >
                 <Upload className="h-4 w-4 mr-2" />
                 Import JSON
               </label>
               <button
                 onClick={handleSaveVersion}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
               >
                 <Save className="h-4 w-4 inline-block mr-2" />
                 Save Version
@@ -259,9 +262,10 @@ const QuestionDesigner: React.FC = () => {
         </div>
       </div>
 
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
+      {/* Main content area */}
+      <div className="max-w-[98rem] mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {importError && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md flex items-center text-red-700">
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center text-red-700">
             <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
             <div>
               <p className="font-medium">Error importing JSON</p>
@@ -273,42 +277,52 @@ const QuestionDesigner: React.FC = () => {
         
         {mode === 'design' && (
           <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-            <div className="bg-white p-4 rounded-lg shadow-lg">
-              <div className="grid grid-cols-12 gap-6">
-                {/* Left Panel for Design Controls - now 2 columns */}
-                <div className="col-span-2 bg-gray-50 p-4 rounded-lg h-[calc(100vh-12rem)] overflow-y-auto">
-                  <div className="space-y-4">
+            <div className="bg-white rounded-xl shadow-sm border">
+              <div className="grid grid-cols-12 divide-x min-h-[calc(100vh-12rem)]">
+                {/* Left Panel - Controls */}
+                <div className="col-span-2 h-full flex flex-col">
+                  <div className="p-4 bg-gray-50 border-b">
+                    <h2 className="text-sm font-medium text-gray-900">Controls</h2>
+                  </div>
+                  <div className="flex-1 p-4 overflow-hidden">
                     <ControlPanel onAddQuestion={handleAddQuestion} />
                   </div>
                 </div>
-                
-                {/* Center Panel for Question Canvas - now 7 columns */}
-                <div className="col-span-7 bg-gray-50 p-4 rounded-lg h-[calc(100vh-12rem)] overflow-y-auto">
-                  <DesignCanvas
-                    questions={questions}
-                    selectedQuestion={selectedQuestion}
-                    onSelectQuestion={setSelectedQuestion}
-                    onUpdateQuestion={handleUpdateQuestion}
-                    onDeleteQuestion={handleDeleteQuestion}
-                  />
+
+                {/* Center Panel - Canvas */}
+                <div className="col-span-7 h-full flex flex-col">
+                  <div className="p-4 bg-gray-50 border-b">
+                    <h2 className="text-sm font-medium text-gray-900">Question Canvas</h2>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-4">
+                    <DesignCanvas
+                      questions={questions}
+                      selectedQuestion={selectedQuestion}
+                      onSelectQuestion={setSelectedQuestion}
+                      onUpdateQuestion={handleUpdateQuestion}
+                      onDeleteQuestion={handleDeleteQuestion}
+                    />
+                  </div>
                 </div>
 
-                {/* Right Panel for Properties - now 3 columns */}
-                <div className="col-span-3 bg-gray-50 p-4 rounded-lg h-[calc(100vh-12rem)] overflow-y-auto">
-                  {selectedQuestion ? (
-                    <div className="bg-white p-4 rounded-lg shadow w-full">
-                      <h3 className="text-lg font-medium text-gray-900 mb-4">Question Properties</h3>
+                {/* Right Panel - Properties */}
+                <div className="col-span-3 h-full flex flex-col">
+                  <div className="p-4 bg-gray-50 border-b">
+                    <h2 className="text-sm font-medium text-gray-900">Properties</h2>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-4">
+                    {selectedQuestion ? (
                       <PropertyEditor
                         question={selectedQuestion}
                         questions={questions}
                         onUpdate={handleUpdateQuestion}
                       />
-                    </div>
-                  ) : (
-                    <div className="bg-gray-100 p-4 rounded-lg shadow h-full flex items-center justify-center text-gray-500">
-                      <p>Select a question to edit its properties</p>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-gray-500 text-sm">
+                        <p>Select a question to edit its properties</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
