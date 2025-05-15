@@ -216,20 +216,19 @@ const ColumnLayout: React.FC<{
   const children = layout.children || {};
 
   return (
-    <div className="bg-white rounded-lg p-4 mb-4 shadow-sm relative">
-      <div className="absolute right-2 top-2">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            Object.values(children).flat().forEach(id => onDeleteQuestion(id));
-            onDeleteQuestion(columnQuestion.id);
-          }}
-          className="p-2 text-gray-400 hover:text-red-500 bg-white rounded-full shadow-sm hover:shadow-md transition-all"
-          title="Delete column layout"
-        >
-          <Trash className="h-4 w-4" />
-        </button>
-      </div>
+    <div className="bg-white rounded-lg p-4 mb-4 shadow-sm relative group">
+      <button
+        onClick={() => {
+          // Delete all child questions first
+          Object.values(children).flat().forEach(id => onDeleteQuestion(id));
+          // Then delete the column layout
+          onDeleteQuestion(columnQuestion.id);
+        }}
+        className="absolute right-2 top-2 p-2 text-gray-400 hover:text-red-500 bg-white rounded-full shadow-sm hover:shadow-md transition-all opacity-0 group-hover:opacity-100"
+        title="Delete column layout"
+      >
+        <Trash className="h-4 w-4" />
+      </button>
 
       <div className="flex -mx-2">
         {distribution.map((width, index) => {
@@ -238,7 +237,7 @@ const ColumnLayout: React.FC<{
           const columnQuestions = columnItems
             .map(id => questions.find(q => q.id === id))
             .filter((q): q is Question => q !== undefined);
-          
+
           return (
             <DroppableColumn
               key={index}
