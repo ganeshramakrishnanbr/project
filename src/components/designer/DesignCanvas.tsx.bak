@@ -1,0 +1,362 @@
+import React from 'react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { Question } from '../../types';
+import { GripVertical, Trash, Asterisk } from 'lucide-react';
+import { SortableContext, verticalListSor              <DroppableColumn
+                key={index}
+                id={`${columnQuestion.id}column-${index}`}
+                index={index}
+                width={width}
+                isActive={dragOverColumnId === `${columnQuestion.id}column-${index}`}
+              >
+                <div className="min-h-[100px]">
+                  <SortableContext items={columnQuestions.map(q => q.id)} strategy={verticalListSortingStrategy}>
+                    {columnQuestions.map((q) => (
+                      <SortableQuestion
+                        key={q.id}
+                        question={q}
+                        isSelected={selectedQuestion?.id === q.id}
+                        onSelect={() => onSelectQuestion(q)}
+                        onDelete={() => onDeleteQuestion(q.id)}
+                        onUpdate={onUpdateQuestion}
+                      />
+                    ))}
+                  </SortableContext>
+                </div>
+              </DroppableColumn>ove } from '@dnd-kit/sortable';
+import { DndContext, DragOverlay, DragStartEvent, DragEndEvent } from '@dnd-kit/core';
+
+interface DesignCanvasProps {
+  questions: Question[];
+  selectedQuestion: Question | null;
+  onSelectQuestion: (question: Question) => void;
+  onUpdateQuestion: (question: Question) => void;
+  onDeleteQuestion: (id: string) => void;
+}
+
+// Helper function to get column children
+const getColumnChildren = (container: Question, columnIndex: number): string[] => {
+  if (!container.columnLayout?.children) return [];
+  return container.columnLayout.children[columnIndex] || [];
+};
+
+// Helper function to update column children
+const updateColumnChildren = (container: Question, columnIndex: number, children: string[]): Question => {
+  if (!container.columnLayout) return container;
+  return {
+    ...container,
+    columnLayout: {
+      ...container.columnLayout,
+      children: {
+        ...container.columnLayout.children,
+        [columnIndex]: children
+      }
+    }
+  };
+};
+
+const SortableQuestion: React.FC<{
+  question: Question;
+  isSelected: boolean;
+  onSelect: () => void;
+  onDelete: () => void;
+  onUpdate: (question: Question) => void;
+}> = ({ question, isSelected, onSelect, onDelete, onUpdate }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ 
+    id: question.id,
+    data: {
+      type: question.type,
+      parentId: question.parentId,
+      columnIndex: question.columnIndex
+    }
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : undefined
+  };
+
+  const handleToggleRequired = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onUpdate({
+      ...question,
+      required: !question.required
+    });
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`bg-white border rounded-lg p-4 mb-4 cursor-move ${
+        isSelected ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200'
+      }`}
+      onClick={onSelect}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div {...attributes} {...listeners}>
+            <GripVertical className="h-5 w-5 text-gray-400" />
+          </div>
+          <div>
+            <h3 className="font-medium text-gray-900">{question.text}</h3>
+            <p className="text-sm text-gray-500">{question.type}</p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={handleToggleRequired}
+            className={`p-1 ${question.required ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
+            title={question.required ? 'Make optional' : 'Make required'}
+          >
+            <Asterisk className="h-4 w-4" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="p-1 text-gray-400 hover:text-red-500"
+            title="Delete question"
+          >
+            <Trash className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const DroppableColumn: React.FC<{
+  id: string;
+  index: number;
+  width: number;
+  isActive: boolean;
+  children: React.ReactNode;
+}> = ({ id, index, width, isActive, children }) => {
+  return (
+    <div className={`px-2 ${width === 33 ? 'w-1/3' : 
+                           width === 25 ? 'w-1/4' : 
+                           width === 66 ? 'w-2/3' : 
+                           width === 33 ? 'w-1/3' : 
+                           width === 50 ? 'w-1/2' : 'w-full'}`}>
+      <div 
+        id={id}
+        data-droppable="column"
+        data-column-id={id}
+        className={`min-h-[100px] border-dashed border-2 ${
+          isActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+        } rounded-lg p-2 transition-colors relative`}
+      >
+        <div className="text-center text-gray-500 text-sm py-2">Column {index + 1}</div>
+        <div className="relative min-h-[100px]">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default function DesignCanvas({
+  questions,
+  selectedQuestion,
+  onSelectQuestion,
+  onUpdateQuestion,
+  onDeleteQuestion,
+}: DesignCanvasProps) {
+  const [activeId, setActiveId] = React.useState<string | null>(null);
+  const [dragOverColumnId, setDragOverColumnId] = React.useState<string | null>(null);
+  
+  const topLevelQuestions = questions.filter(q => !q.parentId);
+  
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    setActiveId(active.id as string);
+  };
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+    setDragOverColumnId(null);
+
+    if (!over) return;
+
+    const questionId = active.id as string;
+    const question = questions.find(q => q.id === questionId);
+    if (!question) return;
+
+    const overId = over.id as string;
+    
+    // Handle drops into columns
+    if (overId.includes('column-')) {
+      const [containerId, columnIndex] = overId.split('column-');
+      const containerQuestion = questions.find(q => q.id === containerId);
+      
+      // Ensure we found the container and it's a column layout
+      if (!containerQuestion?.columnLayout) return;
+
+      if (containerQuestion && containerQuestion.type === 'columns') {
+        // Remove from old container if exists
+        if (question.parentId) {
+          const oldParent = questions.find(q => q.id === question.parentId);
+          if (oldParent && oldParent.columnLayout?.children) {
+            const oldColumnIndex = question.columnIndex || 0;
+            const oldChildren = oldParent.columnLayout.children[oldColumnIndex] || [];
+            onUpdateQuestion(updateColumnChildren(oldParent, oldColumnIndex, oldChildren.filter(id => id !== questionId)));
+          }
+        }
+
+        // Add to new container
+        const columnIdx = parseInt(columnIndex);
+        const currentChildren = getColumnChildren(containerQuestion, columnIdx);
+        onUpdateQuestion(updateColumnChildren(containerQuestion, columnIdx, [...currentChildren, questionId]));
+
+        // Update question's parent reference
+        onUpdateQuestion({
+          ...question,
+          parentId: containerQuestion.id,
+          columnIndex: columnIdx
+        });
+      }
+    } else if (question.parentId) {
+      // If dragging from a column to the main area
+      const parent = questions.find(q => q.id === question.parentId);
+      if (parent && parent.columnLayout?.children) {
+        const columnIndex = question.columnIndex || 0;
+        const children = parent.columnLayout.children[columnIndex] || [];
+        onUpdateQuestion(updateColumnChildren(parent, columnIndex, children.filter(id => id !== questionId)));
+      }
+      
+      onUpdateQuestion({
+        ...question,
+        parentId: undefined,
+        columnIndex: undefined
+      });
+    } else if (active.id !== over.id && !overId.includes('column-')) {
+      // Handle reordering at the top level
+      const oldIndex = topLevelQuestions.findIndex(q => q.id === active.id);
+      const newIndex = topLevelQuestions.findIndex(q => q.id === over.id);
+      
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const reorderedQuestions = arrayMove(questions, oldIndex, newIndex);
+        reorderedQuestions.forEach((q: Question) => onUpdateQuestion(q));
+      }
+    }
+  };
+
+  const renderColumnLayout = (columnQuestion: Question) => {
+    const layout = columnQuestion.columnLayout;
+    if (!layout) return null;
+
+    const distribution = layout.distribution.replace(/%/g, '').split('-').map(Number);
+    const children = layout.children || {};
+
+    return (
+      <div className="relative bg-white rounded-lg p-4 mb-4 shadow-sm">
+        <div className="absolute right-2 top-2 z-10">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              // Delete child questions first
+              Object.values(children).flat().forEach(id => onDeleteQuestion(id));
+              // Then delete the column layout
+              onDeleteQuestion(columnQuestion.id);
+            }}
+            className="p-2 text-gray-400 hover:text-red-500 bg-white rounded-full shadow-sm hover:shadow-md transition-all"
+            title="Delete column layout"
+          >
+            <Trash className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="flex -mx-2">
+          {distribution.map((width, index) => {
+            const columnItems = children[index] || [];
+            const columnQuestions = columnItems
+              .map(id => questions.find(q => q.id === id))
+              .filter((q): q is Question => q !== undefined);
+
+            return (
+              <DroppableColumn
+                key={index}
+                id={`${columnQuestion.id}column-${index}`}
+                index={index}
+                width={width}
+                isActive={dragOverColumnId === `${columnQuestion.id}column-${index}`}
+              >
+                <SortableContext items={columnQuestions.map(q => q.id)} strategy={verticalListSortingStrategy}>
+                  {columnQuestions.map((q) => (
+                    <SortableQuestion
+                      key={q.id}
+                      question={q}
+                      isSelected={selectedQuestion?.id === q.id}
+                      onSelect={() => onSelectQuestion(q)}
+                      onDelete={() => onDeleteQuestion(q.id)}
+                      onUpdate={onUpdateQuestion}
+                    />
+                  ))}
+                </SortableContext>
+              </DroppableColumn>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  return (    <DndContext 
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragOver={({ over }) => {
+        // Only highlight columns when hovering over them
+        if (over?.id && typeof over.id === 'string' && over.id.includes('column-')) {
+          setDragOverColumnId(over.id);
+        } else {
+          setDragOverColumnId(null);
+        }
+      }}
+    >
+      <div className="bg-gray-50 rounded-lg border border-dashed border-gray-300 p-4 min-h-[600px]">
+        {questions.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-gray-500">
+            Drag and drop questions here
+          </div>
+        ) : (
+          <SortableContext items={topLevelQuestions.map(q => q.id)} strategy={verticalListSortingStrategy}>
+            {topLevelQuestions.map((question) => (
+              question.type === 'columns' ? (
+                <div key={question.id} className="mb-4">
+                  {renderColumnLayout(question)}
+                </div>
+              ) : (                <SortableQuestion
+                  key={question.id}
+                  question={question}
+                  isSelected={selectedQuestion?.id === question.id}
+                  onSelect={() => onSelectQuestion(question)}
+                  onDelete={() => onDeleteQuestion(question.id)}
+                  onUpdate={onUpdateQuestion}
+                />
+              )
+            ))}
+          </SortableContext>
+        )}
+      </div>
+
+      <DragOverlay>
+        {activeId && (
+          <div className="bg-white border rounded-lg p-4 shadow-lg opacity-80">
+            {questions.find(q => q.id === activeId)?.text}
+          </div>
+        )}
+      </DragOverlay>
+    </DndContext>
+  );
+};
