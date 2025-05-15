@@ -357,9 +357,7 @@ export default function DesignCanvas({
       const parent = questions.find(q => q.id === question.parentId);
       if (parent?.columnLayout?.children) {
         const columnIndex = question.columnIndex || 0;
-        const children = get
-
-ColumnChildren(parent, columnIndex);
+        const children = getColumnChildren(parent, columnIndex);
         const newParentChildren = children.filter(id => id !== questionId);
         const updatedOldParent = updateColumnChildren(parent, columnIndex, newParentChildren);
         onUpdateQuestion(updatedOldParent);
