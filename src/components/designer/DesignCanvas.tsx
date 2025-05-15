@@ -18,13 +18,11 @@ interface DesignCanvasProps {
   onDeleteQuestion: (id: string) => void;
 }
 
-// Helper function to get column children
 const getColumnChildren = (container: Question, columnIndex: number): string[] => {
   if (!container.columnLayout?.children) return [];
   return container.columnLayout.children[columnIndex] || [];
 };
 
-// Helper function to update column children
 const updateColumnChildren = (container: Question, columnIndex: number, children: string[]): Question => {
   if (!container.columnLayout) return container;
   return {
@@ -99,11 +97,18 @@ const SortableQuestion: React.FC<{
   const combinedStyle = { ...baseSortableStyle, ...dynamicStyles };
 
   const handleToggleRequired = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     onUpdate({
       ...question,
       required: !question.required
     });
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onDelete();
   };
 
   return (
@@ -130,17 +135,14 @@ const SortableQuestion: React.FC<{
         <div className="flex items-center space-x-2">
           <button
             onClick={handleToggleRequired}
-            className={`p-1 ${question.required ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
+            className={`p-1.5 rounded-md hover:bg-gray-100 ${question.required ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
             title={question.required ? 'Make optional' : 'Make required'}
           >
             <Asterisk className="h-4 w-4" />
           </button>
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            className="p-1 text-gray-400 hover:text-red-500"
+            onClick={handleDelete}
+            className="p-1.5 rounded-md hover:bg-gray-100 text-gray-400 hover:text-red-500"
             title="Delete question"
           >
             <Trash className="h-4 w-4" />
@@ -232,8 +234,8 @@ const ColumnLayout: React.FC<{
 
       <div className="flex -mx-2">
         {distribution.map((width, index) => {
-          const columnItems = children[index] || [];
           const columnId = `${columnQuestion.id}column-${index}`;
+          const columnItems = children[index] || [];
           const columnQuestions = columnItems
             .map(id => questions.find(q => q.id === id))
             .filter((q): q is Question => q !== undefined);
@@ -309,7 +311,6 @@ export default function DesignCanvas({
 
     const overId = over.id as string;
     
-    // Handle drops into columns
     if (overId.includes('column-')) {
       const [containerId, columnIndexStr] = overId.split('column-');
       const containerQuestion = questions.find(q => q.id === containerId);
@@ -324,7 +325,6 @@ export default function DesignCanvas({
         return;
       }
 
-      // Remove from old container if exists
       if (question.parentId) {
         const oldParent = questions.find(q => q.id === question.parentId);
         if (oldParent?.columnLayout?.children) {
@@ -336,14 +336,12 @@ export default function DesignCanvas({
         }
       }
 
-      // Add to new container
       const columnIndex = parseInt(columnIndexStr);
       const currentChildrenInNewColumn = getColumnChildren(containerQuestion, columnIndex);
       const newChildrenInNewColumn = [...currentChildrenInNewColumn.filter(id => id !== questionId), questionId];
       const updatedNewParent = updateColumnChildren(containerQuestion, columnIndex, newChildrenInNewColumn);
       onUpdateQuestion(updatedNewParent);
 
-      // Update question's parent reference
       const updatedQuestionWithParentInfo = {
         ...question,
         parentId: containerQuestion.id,
@@ -352,7 +350,6 @@ export default function DesignCanvas({
       onUpdateQuestion(updatedQuestionWithParentInfo);
 
     } else if (question.parentId) {
-      // If dragging from a column to the main area
       const parent = questions.find(q => q.id === question.parentId);
       if (parent?.columnLayout?.children) {
         const columnIndex = question.columnIndex || 0;
