@@ -353,6 +353,53 @@ const PropertyEditor: React.FC<PropertyEditorProps> = ({ question, questions, on
           </div>
         )}
 
+        {(question.type === 'numeric' || question.type === 'slider') && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Min Value</label>
+            <input
+              type="number"
+              value={question.min || ''}
+              onChange={(e) => handleChange('min', Number(e.target.value))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            />
+            <label className="block text-sm font-medium text-gray-700 mb-1 mt-4">Max Value</label>
+            <input
+              type="number"
+              value={question.max || ''}
+              onChange={(e) => handleChange('max', Number(e.target.value))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            />
+            <label className="block text-sm font-medium text-gray-700 mb-1 mt-4">Step</label>
+            <input
+              type="number"
+              value={question.step || ''}
+              onChange={(e) => handleChange('step', Number(e.target.value))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            />
+          </div>
+        )}
+
+        {question.type === 'slider' && (
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Label</label>
+            <input
+              type="text"
+              value={question.label || ''}
+              onChange={(e) => handleChange('label', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              placeholder="Enter label text"
+            />
+            <label className="block text-sm font-medium text-gray-700 mb-1 mt-4">Description</label>
+            <input
+              type="text"
+              value={question.description || ''}
+              onChange={(e) => handleChange('description', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              placeholder="Enter description text (optional)"
+            />
+          </div>
+        )}
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Dependency</label>
           <select

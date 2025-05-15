@@ -9,6 +9,8 @@ import PropertyEditor from './designer/PropertyEditor';
 import QuestionPreview from './designer/QuestionPreview';
 import VersionHistory from './designer/VersionHistory';
 import MatrixModal from './questions/MatrixModal';
+import ColumnLayoutSelector from './designer/ColumnLayoutSelector';
+import { useQuestions } from '../context/QuestionsContext';
 
 interface DesignerQuestion extends Question {
   isModalOpen?: boolean;
@@ -22,6 +24,8 @@ const QuestionDesigner: React.FC = () => {
   const [jsonOutput, setJsonOutput] = useState('');
   const [importError, setImportError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showColumnSelector, setShowColumnSelector] = useState(false);
+  const pendingColumnQuestion = useRef<DesignerQuestion | null>(null);
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -31,6 +35,19 @@ const QuestionDesigner: React.FC = () => {
     })
   );
 
+  const { templates, updateTemplate } = useQuestions();
+
+  // Helper function to update context
+  const updateContextWithCurrentQuestions = (currentQuestions: DesignerQuestion[]) => {
+    if (templates.length > 0 && updateTemplate) {
+      const activeTemplate = templates[0]; // Assuming we edit the first template
+      // Filter out any potential undefined questions before updating
+      const validQuestions = currentQuestions.filter(q => q !== null && q !== undefined);
+      console.log('[QuestionDesigner] Updating context with questions:', JSON.parse(JSON.stringify(validQuestions)));
+      updateTemplate(activeTemplate.state, { ...activeTemplate, questions: validQuestions });
+    }
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -38,7 +55,9 @@ const QuestionDesigner: React.FC = () => {
       setQuestions((items) => {
         const oldIndex = items.findIndex((item) => item.id === active.id);
         const newIndex = items.findIndex((item) => item.id === over.id);
-        return arrayMove(items, oldIndex, newIndex);
+        const newItems = arrayMove(items, oldIndex, newIndex);
+        updateContextWithCurrentQuestions(newItems);
+        return newItems;
       });
     }
   };
@@ -47,12 +66,16 @@ const QuestionDesigner: React.FC = () => {
   const handleAddQuestion = (type: QuestionType, withConfig?: boolean) => {
     const newQuestion: DesignerQuestion = {
       id: `question_${Date.now()}`,
-      text: 'New Question',
+      text: type === 'columns' ? 'Column Layout' : 'New Question',
       sectionName: 'Default Section',
       type,
       options: type === 'radio' || type === 'checkbox' || type === 'dropdown' || type === 'multiselect' 
         ? ['Option 1'] 
         : undefined,
+      min: type === 'slider' ? 0 : undefined,
+      max: type === 'slider' ? 100 : undefined,
+      step: type === 'slider' ? 1 : undefined,
+      label: type === 'slider' ? 'Slider Question' : undefined,
       matrixData: type === 'matrix' ? {
         label: 'Matrix Question',
         columns: [
@@ -65,65 +88,141 @@ const QuestionDesigner: React.FC = () => {
       } : undefined,
       isModalOpen: type === 'matrix' && withConfig ? true : undefined
     };
-    
-    // Update questions and select the new question immediately
+
+    if (type === 'columns') {
+      pendingColumnQuestion.current = {
+        ...newQuestion,
+        isColumnContainer: true
+      };
+      setShowColumnSelector(true);
+    } else {
+      addQuestionToCanvas(newQuestion);
+    }
+  };
+
+  const addQuestionToCanvas = (question: DesignerQuestion) => {
     setQuestions(prevQuestions => {
-      const updatedQuestions = [...prevQuestions, newQuestion];
-      // Set the selected question in a callback to ensure it happens after questions are updated
-      setSelectedQuestion(newQuestion);
+      const updatedQuestions = [...prevQuestions, question];
+      setSelectedQuestion(question);
+      updateContextWithCurrentQuestions(updatedQuestions);
       return updatedQuestions;
     });
   };
 
-  const handleUpdateQuestion = (updatedQuestion: Question) => {
-    // Find the question being updated
-    const oldQuestion = questions.find(q => q.id === updatedQuestion.id || q === selectedQuestion);
-    if (!oldQuestion) return;
-
-    // Update questions array
-    const updatedQuestions = questions.map(q => {
-      if (q === oldQuestion) {
-        // This is the question being updated
-        return {
-          ...updatedQuestion,
-          matrixData: updatedQuestion.matrixData ? {
-            ...updatedQuestion.matrixData,
-            label: updatedQuestion.matrixData.label || 'Matrix Question',
-            optionsLabel: updatedQuestion.matrixData.optionsLabel || 'Options',
-            showNoneOption: updatedQuestion.matrixData.showNoneOption ?? true,
-            columns: [...(updatedQuestion.matrixData.columns || [])].map(col => ({...col})),
-            rows: [...(updatedQuestion.matrixData.rows || [])].map(row => ({...row}))
-          } : undefined
-        };
-      }
-
-      // Update any dependencies if the ID changed
-      if (oldQuestion.id !== updatedQuestion.id && q.condition?.questionId === oldQuestion.id) {
-        return {
-          ...q,
-          condition: {
-            ...q.condition,
-            questionId: updatedQuestion.id
-          }
-        };
-      }
-
-      return q;
-    });
-
-    setQuestions(updatedQuestions);
-
-    // Update selected question
-    if (selectedQuestion && selectedQuestion.id === oldQuestion.id) {
-      setSelectedQuestion(updatedQuestions.find(q => q.id === updatedQuestion.id) || null);
+  const handleColumnLayoutSelect = (layout: { columns: number; distribution: string }) => {
+    if (pendingColumnQuestion.current) {
+      const questionWithLayout = {
+        ...pendingColumnQuestion.current,
+        columnLayout: {
+          ...layout,
+          children: {}
+        }
+      };
+      addQuestionToCanvas(questionWithLayout);
+      pendingColumnQuestion.current = null;
     }
   };
 
+  const handleUpdateQuestion = (updatedQuestion: Question) => {
+    console.log('[QuestionDesigner] handleUpdateQuestion: Received updatedQuestion:', JSON.parse(JSON.stringify(updatedQuestion)));
+    
+    setQuestions(prevQuestions => {
+      console.log('[QuestionDesigner] handleUpdateQuestion: prevQuestions:', JSON.parse(JSON.stringify(prevQuestions)));
+      
+      const isUpdatingContainer = prevQuestions.some(q => q.id === updatedQuestion.id && q.type === 'columns');
+      const isUpdatingChildParentInfo = !isUpdatingContainer && updatedQuestion.parentId;
+
+      let newQuestionsState: DesignerQuestion[];
+
+      if (isUpdatingContainer && updatedQuestion.columnLayout && updatedQuestion.type === 'columns') {
+        // This is an update to a column container itself, and new layout info is provided.
+        newQuestionsState = prevQuestions.map(q => {
+          if (q.id === updatedQuestion.id) {
+            console.log(`[QuestionDesigner] handleUpdateQuestion: Updating container ${q.id} with new layout children.`);
+            
+            // Properties from updatedQuestion, excluding its columnLayout which we'll build carefully.
+            const { columnLayout: _, ...otherUpdatedProps } = updatedQuestion;
+
+            const newDesignerQuestion: DesignerQuestion = {
+              ...q, // Start with existing DesignerQuestion properties
+              ...otherUpdatedProps, // Apply other updated properties
+              type: 'columns', // Ensure type is columns
+              columnLayout: { // Construct the columnLayout carefully
+                columns: updatedQuestion.columnLayout.columns, // This is 'number'
+                distribution: updatedQuestion.columnLayout.distribution, // This is 'string'
+                children: { ...(updatedQuestion.columnLayout.children || {}) },
+              },
+            };
+            return newDesignerQuestion;
+          }
+          return q;
+        });
+      } else if (isUpdatingChildParentInfo) {
+        newQuestionsState = prevQuestions.map(q => {
+          if (q.id === updatedQuestion.id) {
+            console.log(`[QuestionDesigner] handleUpdateQuestion: Updating child ${q.id} with new parent/column info.`);
+            return { ...q, ...updatedQuestion }; 
+          }
+          return q;
+        });
+      } else {
+        newQuestionsState = prevQuestions.map(q => {
+          if (q.id === updatedQuestion.id) {
+            console.log(`[QuestionDesigner] handleUpdateQuestion: General update for question ${q.id}.`);
+            if (updatedQuestion.parentId === undefined && q.parentId) {
+               console.log(`[QuestionDesigner] handleUpdateQuestion: Question ${q.id} moved out of column ${q.parentId}.`);
+            }
+            // Ensure matrixData is handled immutably if present
+            const matrixData = updatedQuestion.matrixData ? {
+              ...updatedQuestion.matrixData,
+              columns: [...(updatedQuestion.matrixData.columns || [])].map(col => ({...col})),
+              rows: [...(updatedQuestion.matrixData.rows || [])].map(row => ({...row}))
+            } : undefined;
+
+            // If the type changes away from 'columns', columnLayout should be removed.
+            // Or if it's a general update to a 'columns' type question not affecting layout structure directly via updatedQuestion.columnLayout.
+            const baseUpdate = { ...q, ...updatedQuestion, matrixData };
+
+            if (baseUpdate.type !== 'columns') {
+              delete baseUpdate.columnLayout;
+            } else if (baseUpdate.type === 'columns' && !baseUpdate.columnLayout && q.columnLayout) {
+              // If it's still a column type, but updatedQuestion didn't provide a columnLayout,
+              // retain the existing q.columnLayout. This happens if only e.g. text of column container changes.
+              baseUpdate.columnLayout = q.columnLayout;
+            } else if (baseUpdate.type === 'columns' && !baseUpdate.columnLayout && !q.columnLayout) {
+              // This case implies it's a column type but has no layout defined yet.
+              // This might happen if a new 'columns' question is added but layout selection is pending,
+              // though handleAddQuestion and handleColumnLayoutSelect should manage this.
+              // For safety, ensure it's at least an empty object if it's a column type.
+              // However, the type Question allows columnLayout to be undefined.
+              // So, we only define it if it's meaningful.
+            }
+            return baseUpdate;
+          }
+          return q;
+        });
+      }
+
+      console.log('[QuestionDesigner] handleUpdateQuestion: newQuestionsState:', JSON.parse(JSON.stringify(newQuestionsState)));
+      
+      // Update selected question if it was the one modified
+      if (selectedQuestion && selectedQuestion.id === updatedQuestion.id) {
+        const newlySelected = newQuestionsState.find(q => q.id === updatedQuestion.id) || null;
+        console.log('[QuestionDesigner] handleUpdateQuestion: Updating selectedQuestion:', newlySelected ? JSON.parse(JSON.stringify(newlySelected)) : null);
+        setSelectedQuestion(newlySelected);
+      }
+      updateContextWithCurrentQuestions(newQuestionsState);
+      return newQuestionsState;
+    });
+  };
+
   const handleDeleteQuestion = (questionId: string) => {
-    setQuestions(questions.filter(q => q.id !== questionId));
+    const newQuestions = questions.filter(q => q.id !== questionId);
+    setQuestions(newQuestions);
     if (selectedQuestion?.id === questionId) {
       setSelectedQuestion(null);
     }
+    updateContextWithCurrentQuestions(newQuestions);
   };
 
   const handleSaveVersion = () => {
@@ -135,7 +234,9 @@ const QuestionDesigner: React.FC = () => {
   };
 
   const handleRestoreVersion = (version: { timestamp: number; questions: Question[] }) => {
-    setQuestions([...version.questions]);
+    const restoredQuestions = [...version.questions] as DesignerQuestion[];
+    setQuestions(restoredQuestions);
+    updateContextWithCurrentQuestions(restoredQuestions);
     setMode('design');
   };
 
@@ -168,8 +269,9 @@ const QuestionDesigner: React.FC = () => {
           }
         });
 
-        setQuestions(parsedQuestions);
+        setQuestions(parsedQuestions as DesignerQuestion[]);
         setSelectedQuestion(null);
+        updateContextWithCurrentQuestions(parsedQuestions as DesignerQuestion[]);
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
@@ -192,6 +294,11 @@ const QuestionDesigner: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
+      <ColumnLayoutSelector
+        isOpen={showColumnSelector}
+        onClose={() => setShowColumnSelector(false)}
+        onSelect={handleColumnLayoutSelect}
+      />
       {/* Sticky header with shadow */}
       <div className="sticky top-0 z-30 bg-white border-b shadow-sm">
         <div className="max-w-[98rem] mx-auto px-4 sm:px-6 lg:px-8">
@@ -330,8 +437,10 @@ const QuestionDesigner: React.FC = () => {
         )}
 
         {mode === 'preview' && (
-          <div className="bg-white rounded-lg shadow-lg p-8 max-w-full">
-            <QuestionPreview questions={questions} />
+          <div className="bg-white rounded-xl shadow-sm border p-6">
+            <QuestionPreview 
+              questions={templates.length > 0 && templates[0].questions ? templates[0].questions : []}
+            />
           </div>
         )}
 
@@ -370,6 +479,13 @@ const QuestionDesigner: React.FC = () => {
           />
         )
       ))}
+      {showColumnSelector && (
+        <ColumnLayoutSelector
+          isOpen={showColumnSelector}
+          onClose={() => setShowColumnSelector(false)}
+          onSelect={handleColumnLayoutSelect}
+        />
+      )}
     </div>
   );
 };

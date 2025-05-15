@@ -33,7 +33,8 @@ export type QuestionType =
   | 'matrix'
   | 'multiselect'
   | 'toggle'
-  | 'slider';
+  | 'slider'
+  | 'columns';
 
 export type MatrixColumnType = 'radio' | 'checkbox';
 
@@ -77,6 +78,14 @@ export interface Question {
   label?: string;
   description?: string;
   step?: number;
+  columnLayout?: {
+    columns: number;
+    distribution: string;
+    children?: { [columnIndex: number]: string[] };  // Array of question IDs per column
+  };
+  parentId?: string;
+  columnIndex?: number;
+  isColumnContainer?: boolean;
 }
 
 export interface QuestionTemplate {

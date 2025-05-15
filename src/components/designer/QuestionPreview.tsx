@@ -1,13 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Added useEffect for logging
 import { Question } from '../../types';
 import QuestionRenderer from '../questions/QuestionRenderer';
+import { useQuestions } from '../../context/QuestionsContext';
 
 interface QuestionPreviewProps {
-  questions: Question[];
+  questions: Question[]; // This prop should be templates[0].questions from QuestionDesigner
 }
 
-const QuestionPreview: React.FC<QuestionPreviewProps> = ({ questions }) => {
+const QuestionPreview: React.FC<QuestionPreviewProps> = ({ questions: questionsFromDesign }) => {
   const [answers, setAnswers] = useState<Record<string, any>>({});
+  const { questions: allQuestionsFromContext } = useQuestions();
+
+  useEffect(() => {
+    console.log('[QuestionPreview] Received questionsFromDesign:', JSON.parse(JSON.stringify(questionsFromDesign)));
+    questionsFromDesign.forEach(q => {
+      console.log(`[QuestionPreview] Question ID: ${q.id}, Type: ${q.type}, ParentID: ${q.parentId}`);
+    });
+  }, [questionsFromDesign]);
 
   const shouldShowQuestion = (question: Question): boolean => {
     if (!question.condition) return true;
@@ -17,13 +26,11 @@ const QuestionPreview: React.FC<QuestionPreviewProps> = ({ questions }) => {
     
     if (!answer?.value) return false;
 
-    // Special handling for matrix type dependencies
-    const dependentQuestion = questions.find(q => q.id === questionId);
+    const dependentQuestion = allQuestionsFromContext.find(q => q.id === questionId);
     if (dependentQuestion?.type === 'matrix') {
-      const matrixValue = value as Record<string, Record<string, boolean>>;
+      const matrixValue = value as unknown as Record<string, Record<string, boolean>>; // Corrected cast
       const matrixAnswer = answer.value as Record<string, Record<string, boolean>>;
       
-      // Check if any of the selected combinations match
       return Object.entries(matrixValue).some(([rowId, columns]) => {
         if (!matrixAnswer[rowId]) return false;
         return Object.entries(columns).some(([columnId, isSelected]) => {
@@ -54,11 +61,14 @@ const QuestionPreview: React.FC<QuestionPreviewProps> = ({ questions }) => {
     }));
   };
 
+  const topLevelQuestions = questionsFromDesign.filter(q => !q.parentId);
+  console.log('[QuestionPreview] Filtered topLevelQuestions:', JSON.parse(JSON.stringify(topLevelQuestions.map(q => ({id: q.id, type: q.type, parentId: q.parentId})))));
+
   return (
     <div className="max-w-3xl mx-auto">
       <h2 className="text-2xl font-bold text-gray-900 mb-8">Preview</h2>
       <div className="space-y-8">
-        {questions.map(question => (
+        {topLevelQuestions.map(question => (
           shouldShowQuestion(question) && (
             <div key={question.id}>
               <QuestionRenderer

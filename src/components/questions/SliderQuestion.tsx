@@ -6,6 +6,7 @@ interface SliderQuestionProps {
   value: number;
   onChange: (value: number) => void;
   required?: boolean;
+  mode?: 'design' | 'preview';
 }
 
 const SliderQuestion: React.FC<SliderQuestionProps> = ({
@@ -13,6 +14,7 @@ const SliderQuestion: React.FC<SliderQuestionProps> = ({
   value,
   onChange,
   required,
+  mode = 'preview',
 }) => {
   const min = question.min || 0;
   const max = question.max || 100;
@@ -37,9 +39,8 @@ const SliderQuestion: React.FC<SliderQuestionProps> = ({
           {required && <span className="text-red-500 ml-1">*</span>}
         </span>
         <span className="text-gray-600 font-medium">{value}</span>
-      </label>
-      <div className="flex items-center space-x-4">
-        <span className="text-sm text-gray-500">{min}</span>
+      </label>      <div className="flex items-center space-x-4">
+        {mode === 'design' && <span className="text-sm text-gray-500">{min}</span>}
         <input
           type="range"
           min={min}
@@ -50,7 +51,7 @@ const SliderQuestion: React.FC<SliderQuestionProps> = ({
           className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-600"
           style={getBackgroundSize()}
         />
-        <span className="text-sm text-gray-500">{max}</span>
+        {mode === 'design' && <span className="text-sm text-gray-500">{max}</span>}
       </div>
       {question.description && (
         <p className="text-sm text-gray-500 mt-1">{question.description}</p>

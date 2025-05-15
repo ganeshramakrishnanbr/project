@@ -42,7 +42,7 @@ const questionControls = [
 
 const layoutControls = [
   { type: 'section' as QuestionType, label: 'Section Container', icon: LayoutGrid },
-  { type: 'columns' as QuestionType, label: 'Two Columns', icon: Columns }
+  { type: 'columns' as QuestionType, label: 'Column Layout', icon: Columns }
 ];
 
 const ControlPanel: React.FC<ControlPanelProps> = ({ onAddQuestion }) => {
