@@ -189,7 +189,7 @@ const PropertyEditor: React.FC<PropertyEditorProps> = ({ question, questions, on
   };
 
   return (
-    <div className="space-y-6">
+    <div key={question.id} className="space-y-6">
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Question ID</label>

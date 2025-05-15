@@ -6,7 +6,6 @@ import { GripVertical, Trash, Asterisk } from 'lucide-react';
 import { 
   SortableContext, 
   verticalListSortingStrategy,
-  // arrayMove // No longer used here, handled by parent
 } from '@dnd-kit/sortable';
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import { DndContext, DragOverlay, useDroppable } from '@dnd-kit/core';
@@ -64,7 +63,6 @@ const SortableQuestion: React.FC<{
   });
 
   const isInColumn = !!question.parentId;
-  console.log(`SortableQuestion Render: id=${question.id}, isInColumn=${isInColumn}, parentId=${question.parentId}, columnIndex=${question.columnIndex}, text='${question.text}', isDragging=${isDragging}`);
 
   const baseSortableStyle: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -77,8 +75,8 @@ const SortableQuestion: React.FC<{
 
   const dynamicStyles: React.CSSProperties = isDragging
     ? { 
-        opacity: 0.5, // Keep it slightly visible for debugging overlay issues
-        visibility: 'visible', // Keep it visible to see if it's just an opacity issue
+        opacity: 0.5,
+        visibility: 'visible',
         zIndex: -1, 
       }
     : { 
@@ -87,8 +85,8 @@ const SortableQuestion: React.FC<{
         display: 'block', 
         zIndex: isInColumn ? 100 : 1, 
         ...(isInColumn && { 
-          backgroundColor: 'hotpink',
-          border: '3px solid red',
+          backgroundColor: 'white',
+          border: '1px solid #e5e7eb',
           minHeight: '50px',
           minWidth: '90%',
           color: 'black',
@@ -111,11 +109,9 @@ const SortableQuestion: React.FC<{
   return (
     <div
       ref={setNodeRef}
-      style={combinedStyle} // Use the combined style
+      style={combinedStyle}
       {...attributes}
       {...listeners}
-      // className no longer needs mb-4 as it's in combinedStyle.
-      // transition-colors is for selection feedback.
       className={`bg-white border rounded-lg p-4 transition-colors ${
         isSelected ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200'
       }`}
@@ -170,7 +166,8 @@ const DroppableColumn: React.FC<{
     }
   });
 
-  return (    <div className={`px-2 ${width === 33 ? 'w-1/3' : 
+  return (
+    <div className={`px-2 ${width === 33 ? 'w-1/3' : 
                            width === 25 ? 'w-1/4' : 
                            width === 66 ? 'w-2/3' : 
                            width === 50 ? 'w-1/2' : 'w-full'}`}>
@@ -217,7 +214,6 @@ const ColumnLayout: React.FC<{
 
   const distribution = layout.distribution.replace(/%/g, '').split('-').map(Number);
   const children = layout.children || {};
-  console.log(`ColumnLayout Render: id=${columnQuestion.id}, layoutChildren=${JSON.stringify(children)}, dragOverColumnId=${dragOverColumnId}`);
 
   return (
     <div className="bg-white rounded-lg p-4 mb-4 shadow-sm relative">
@@ -243,11 +239,9 @@ const ColumnLayout: React.FC<{
             .map(id => questions.find(q => q.id === id))
             .filter((q): q is Question => q !== undefined);
           
-          console.log(`ColumnLayout (${columnQuestion.id}) - Column ${index} (id: ${columnId}): itemIds=${JSON.stringify(columnItems)}, resolvedQuestionsCount=${columnQuestions.length}, questionTexts=${JSON.stringify(columnQuestions.map(cq => cq.text))}`);
-
           return (
             <DroppableColumn
-              key={index} // Consider using columnId for key if index can change due to distribution changes
+              key={index}
               id={columnId}
               index={index}
               width={width}
@@ -273,14 +267,13 @@ const ColumnLayout: React.FC<{
   );
 };
 
-// Main component implementation
 export default function DesignCanvas({
   questions,
   selectedQuestion,
   onSelectQuestion,
   onUpdateQuestion,
   onDeleteQuestion,
-}: DesignCanvasProps): JSX.Element { // Added JSX.Element return type
+}: DesignCanvasProps): JSX.Element {
   const [activeId, setActiveId] = React.useState<string | null>(null);
   const [dragOverColumnId, setDragOverColumnId] = React.useState<string | null>(null);
   const [draggingQuestion, setDraggingQuestion] = React.useState<Question | null>(null);
@@ -301,10 +294,7 @@ export default function DesignCanvas({
     setActiveId(null);
     setDragOverColumnId(null);
 
-    console.log('[DesignCanvas] handleDragEnd: Start', { activeId: active.id, overId: over?.id });
-
     if (!over) {
-      console.log('[DesignCanvas] handleDragEnd: No "over" target. Exiting.');
       return;
     }
 
@@ -312,11 +302,9 @@ export default function DesignCanvas({
     const question = questions.find(q => q.id === questionId);
 
     if (!question) {
-      console.log(`[DesignCanvas] handleDragEnd: Question with id ${questionId} not found. Exiting.`);
       return;
     }
     if (question.type === 'columns') {
-      console.log('[DesignCanvas] handleDragEnd: Question is a column layout, cannot be dropped into another column. Exiting.');
       return;
     }
 
@@ -327,21 +315,15 @@ export default function DesignCanvas({
       const [containerId, columnIndexStr] = overId.split('column-');
       const containerQuestion = questions.find(q => q.id === containerId);
       
-      console.log('[DesignCanvas] handleDragEnd: Attempting drop into column.', { questionId, containerId, columnIndexStr });
-
       if (!containerQuestion?.columnLayout || containerQuestion.type !== 'columns') {
-        console.log('[DesignCanvas] handleDragEnd: Invalid container or container is not a column layout.', { containerId, containerType: containerQuestion?.type });
         return;
       }
 
       const allowedTypes = ['numeric', 'boolean', 'text', 'medication', 'time', 'radio', 
                            'checkbox', 'date', 'dropdown', 'matrix', 'multiselect', 'toggle', 'slider'];
       if (!allowedTypes.includes(question.type)) {
-        console.log(`[DesignCanvas] handleDragEnd: Question type "${question.type}" not allowed in columns. Exiting.`);
         return;
       }
-
-      console.log('[DesignCanvas] handleDragEnd: Dropping question into column - VALIDATED.', { questionId, containerId, columnIndex: columnIndexStr });
 
       // Remove from old container if exists
       if (question.parentId) {
@@ -351,7 +333,6 @@ export default function DesignCanvas({
           const oldChildren = getColumnChildren(oldParent, oldColumnIndex);
           const newOldParentChildren = oldChildren.filter(id => id !== questionId);
           const updatedOldParent = updateColumnChildren(oldParent, oldColumnIndex, newOldParentChildren);
-          console.log('[DesignCanvas] handleDragEnd: Removing from old parent.', { oldParentId: oldParent.id, oldColumnIndex, newOldParentChildren });
           onUpdateQuestion(updatedOldParent);
         }
       }
@@ -359,10 +340,8 @@ export default function DesignCanvas({
       // Add to new container
       const columnIndex = parseInt(columnIndexStr);
       const currentChildrenInNewColumn = getColumnChildren(containerQuestion, columnIndex);
-      // Ensure no duplicates if somehow it's already there (defensive)
       const newChildrenInNewColumn = [...currentChildrenInNewColumn.filter(id => id !== questionId), questionId];
       const updatedNewParent = updateColumnChildren(containerQuestion, columnIndex, newChildrenInNewColumn);
-      console.log('[DesignCanvas] handleDragEnd: Adding to new parent.', { newParentId: containerQuestion.id, columnIndex, newChildrenInNewColumn });
       onUpdateQuestion(updatedNewParent);
 
       // Update question's parent reference
@@ -371,19 +350,18 @@ export default function DesignCanvas({
         parentId: containerQuestion.id,
         columnIndex: columnIndex
       };
-      console.log('[DesignCanvas] handleDragEnd: Updating question parent info.', updatedQuestionWithParentInfo);
       onUpdateQuestion(updatedQuestionWithParentInfo);
 
     } else if (question.parentId) {
       // If dragging from a column to the main area
-      console.log('[DesignCanvas] handleDragEnd: Dragging from column to main area.', { questionId, oldParentId: question.parentId });
       const parent = questions.find(q => q.id === question.parentId);
       if (parent?.columnLayout?.children) {
         const columnIndex = question.columnIndex || 0;
-        const children = getColumnChildren(parent, columnIndex);
+        const children = get
+
+ColumnChildren(parent, columnIndex);
         const newParentChildren = children.filter(id => id !== questionId);
         const updatedOldParent = updateColumnChildren(parent, columnIndex, newParentChildren);
-        console.log('[DesignCanvas] handleDragEnd: Removing from old parent (drag to main).', { oldParentId: parent.id, columnIndex, newParentChildren });
         onUpdateQuestion(updatedOldParent);
       }
       
@@ -392,33 +370,8 @@ export default function DesignCanvas({
         parentId: undefined,
         columnIndex: undefined
       };
-      console.log('[DesignCanvas] handleDragEnd: Removing parent info from question.', updatedQuestionWithoutParentInfo);
       onUpdateQuestion(updatedQuestionWithoutParentInfo);
-
-    } else if (active.id !== over.id && !overId.includes('column-')) {
-      // Handle reordering at the top level
-      console.log('[DesignCanvas] handleDragEnd: Reordering at top level.', { activeId: active.id, overId: over.id });
-      const oldIndex = topLevelQuestions.findIndex(q => q.id === active.id);
-      const newIndex = topLevelQuestions.findIndex(q => q.id === over.id);
-      
-      if (oldIndex !== -1 && newIndex !== -1) {
-        // This part needs careful handling of the main questions array,
-        // arrayMove might not be sufficient if other updates are batched.
-        // For now, assuming direct update or a more sophisticated state update in QuestionDesigner
-        // const reorderedQuestions = arrayMove(questions, oldIndex, newIndex); // This moves within the *entire* questions array - COMMENTED OUT
-        console.log('[DesignCanvas] handleDragEnd: Top level reorder - old/new indices:', { oldIndex, newIndex });
-        // It's generally better to let the parent component manage the full state update for reordering.
-        // This might need a different callback like onReorderQuestions(oldIndex, newIndex)
-        // For now, if onUpdateQuestion is smart enough to handle this, it might work, but it's risky.
-        // A safer approach for reordering is to pass the new array or indices to the parent.
-        // Let's assume `onUpdateQuestion` is primarily for single item updates.
-        // A dedicated reorder function would be better.
-        // For now, this might cause issues if not handled carefully by the parent.
-         alert("Top-level reordering logic is handled by QuestionDesigner. This alert is a placeholder.");
-         // questions.forEach((q: Question) => onUpdateQuestion(q)); // This is likely incorrect for reordering the whole list
-      }
     }
-    console.log('[DesignCanvas] handleDragEnd: End');
   };
 
   return (
@@ -451,7 +404,7 @@ export default function DesignCanvas({
                     columnQuestion={question}
                     questions={questions}
                     selectedQuestion={selectedQuestion}
-                    dragOverColumnId={dragOverColumnId} // Ensured dragOverColumnId is passed
+                    dragOverColumnId={dragOverColumnId}
                     onSelectQuestion={onSelectQuestion}
                     onDeleteQuestion={onDeleteQuestion}
                     onUpdateQuestion={onUpdateQuestion}
@@ -470,7 +423,8 @@ export default function DesignCanvas({
             </div>
           </SortableContext>
         )}
-      </div>      <DragOverlay 
+      </div>
+      <DragOverlay 
         dropAnimation={{
           duration: 200,
           easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
