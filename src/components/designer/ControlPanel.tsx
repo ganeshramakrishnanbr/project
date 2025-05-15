@@ -9,10 +9,8 @@ import {
   ChevronDown, 
   Calendar, 
   Clock, 
-  Pill, 
+  Pill,
   Grid,
-  LayoutGrid,
-  Columns,
   Search,
   ChevronUp,
   ChevronDown as ChevronDownIcon,
@@ -40,20 +38,9 @@ const questionControls = [
   { type: 'slider' as QuestionType, label: 'Slider', icon: Minus }
 ];
 
-const layoutControls = [
-  { type: 'section' as QuestionType, label: 'Section Container', icon: LayoutGrid },
-  { type: 'columns' as QuestionType, label: 'Column Layout', icon: Columns }
-];
-
 const ControlPanel: React.FC<ControlPanelProps> = ({ onAddQuestion }) => {
-  const [isLayoutOpen, setIsLayoutOpen] = useState(true);
   const [isQuestionTypesOpen, setIsQuestionTypesOpen] = useState(true);
-  const [layoutSearchTerm, setLayoutSearchTerm] = useState('');
   const [questionTypesSearchTerm, setQuestionTypesSearchTerm] = useState('');
-
-  const filteredLayoutControls = layoutControls.filter(control =>
-    control.label.toLowerCase().includes(layoutSearchTerm.toLowerCase())
-  );
 
   const filteredQuestionControls = questionControls.filter(control =>
     control.label.toLowerCase().includes(questionTypesSearchTerm.toLowerCase())
@@ -61,59 +48,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onAddQuestion }) => {
 
   return (
     <div className="h-full flex flex-col space-y-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent pr-2">
-      {/* Layout Controls Section */}
-      <div className="bg-white rounded-lg border border-gray-200 flex-shrink-0">
-        <button
-          onClick={() => setIsLayoutOpen(!isLayoutOpen)}
-          className="w-full flex items-center justify-between p-3 text-left font-medium bg-gray-50 hover:bg-gray-100 transition-colors"
-        >
-          <div className="flex items-center">
-            <LayoutGrid className="h-4 w-4 mr-2 text-gray-500" />
-            <span className="text-sm text-gray-900">Layout Controls</span>
-          </div>
-          {isLayoutOpen ? (
-            <ChevronUp className="h-4 w-4 text-gray-500" />
-          ) : (
-            <ChevronDownIcon className="h-4 w-4 text-gray-500" />
-          )}
-        </button>
-        
-        <div className={`transition-all duration-200 ease-in-out ${
-          isLayoutOpen ? 'max-h-[200px]' : 'max-h-0'
-        } overflow-y-auto`}>
-          {isLayoutOpen && (
-            <div className="p-3 space-y-2">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search layout controls..."
-                  value={layoutSearchTerm}
-                  onChange={(e) => setLayoutSearchTerm(e.target.value)}
-                  className="w-full px-3 py-1.5 pl-8 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                />
-                <Search className="h-3.5 w-3.5 text-gray-400 absolute left-2.5 top-1/2 transform -translate-y-1/2" />
-              </div>
-              <div className="space-y-1">
-                {filteredLayoutControls.map(({ type, label, icon: Icon }) => (
-                  <button
-                    key={type}
-                    onClick={() => onAddQuestion(type as QuestionType, true)}
-                    className="w-full flex items-center p-2 text-left text-sm text-gray-700 hover:bg-blue-50 rounded-md transition-colors"
-                  >
-                    <Icon className="h-4 w-4 mr-2 text-gray-400" />
-                    <span className="truncate">{label}</span>
-                  </button>
-                ))}
-                {filteredLayoutControls.length === 0 && (
-                  <p className="text-xs text-gray-500 p-2">No layout controls match your search</p>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Question Types Section - Made taller to show more controls */}
       <div className="bg-white rounded-lg border border-gray-200 flex-1">
         <button
           onClick={() => setIsQuestionTypesOpen(!isQuestionTypesOpen)}
