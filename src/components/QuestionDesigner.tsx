@@ -217,12 +217,23 @@ const QuestionDesigner: React.FC = () => {
   };
 
   const handleDeleteQuestion = (questionId: string) => {
-    const newQuestions = questions.filter(q => q.id !== questionId);
-    setQuestions(newQuestions);
-    if (selectedQuestion?.id === questionId) {
-      setSelectedQuestion(null);
-    }
-    updateContextWithCurrentQuestions(newQuestions);
+    console.log(`[QuestionDesigner] Attempting to delete question with ID: ${questionId}`);
+    setQuestions(prevQuestions => {
+      console.log('[QuestionDesigner] Previous questions state:', prevQuestions.map(q => q.id));
+      const newQuestions = prevQuestions.filter(q => q.id !== questionId);
+      console.log('[QuestionDesigner] New questions state after filter:', newQuestions.map(q => q.id));
+
+      if (prevQuestions.length === newQuestions.length) {
+        console.warn(`[QuestionDesigner] Question with ID ${questionId} was not found in the list, or filter failed.`);
+      }
+
+      if (selectedQuestion?.id === questionId) {
+        console.log(`[QuestionDesigner] Deselecting question ${questionId} as it was deleted.`);
+        setSelectedQuestion(null);
+      }
+      updateContextWithCurrentQuestions(newQuestions);
+      return newQuestions;
+    });
   };
 
   const handleSaveVersion = () => {
@@ -286,10 +297,11 @@ const QuestionDesigner: React.FC = () => {
   };
 
   const handleModalClose = (questionId: string) => {
-    const updatedQuestions = questions.map(q => 
-      q.id === questionId ? { ...q, isModalOpen: false } : q
+    setQuestions(prevQuestions => 
+      prevQuestions.map(q => 
+        q.id === questionId ? { ...q, isModalOpen: false } : q
+      )
     );
-    setQuestions(updatedQuestions);
   };
 
   return (

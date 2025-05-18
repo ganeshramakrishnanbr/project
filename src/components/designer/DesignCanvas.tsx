@@ -225,7 +225,15 @@ const ColumnLayout: React.FC<{
         <button
           onClick={(e) => {
             e.stopPropagation();
-            Object.values(children).flat().forEach(id => onDeleteQuestion(id));
+            const childIdsToDelete = Object.values(columnQuestion.columnLayout?.children || {}).flat();
+            console.log(`[ColumnLayout ${columnQuestion.id}] Attempting to delete. Child IDs found in layout:`, JSON.stringify(childIdsToDelete));
+
+            childIdsToDelete.forEach(childId => {
+              console.log(`[ColumnLayout ${columnQuestion.id}] Requesting delete for child ID: ${childId}`);
+              onDeleteQuestion(childId as string);
+            });
+
+            console.log(`[ColumnLayout ${columnQuestion.id}] Requesting delete for column container itself.`);
             onDeleteQuestion(columnQuestion.id);
           }}
           className="p-2 text-gray-400 hover:text-red-500 bg-white rounded-full shadow-sm hover:shadow-md transition-all"
