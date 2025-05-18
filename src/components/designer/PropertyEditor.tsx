@@ -189,7 +189,7 @@ const PropertyEditor: React.FC<PropertyEditorProps> = ({ question, questions, on
   };
 
   return (
-    <div className="space-y-6">
+    <div key={question.id} className="space-y-6">
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Question ID</label>
@@ -334,48 +334,29 @@ const PropertyEditor: React.FC<PropertyEditorProps> = ({ question, questions, on
           </div>
         )}
 
-        {(question.type === 'text' || question.type === 'numeric') && (
+        {(question.type === 'text' || question.type === 'numeric' || question.type === 'slider') && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Min Value</label>
-            <input
-              type="number"
-              value={question.min || ''}
-              onChange={(e) => handleChange('min', Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-            <label className="block text-sm font-medium text-gray-700 mb-1">Max Value</label>
-            <input
-              type="number"
-              value={question.max || ''}
-              onChange={(e) => handleChange('max', Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-          </div>
-        )}
-
-        {(question.type === 'numeric' || question.type === 'slider') && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Min Value</label>
-            <input
-              type="number"
-              value={question.min || ''}
-              onChange={(e) => handleChange('min', Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-            <label className="block text-sm font-medium text-gray-700 mb-1 mt-4">Max Value</label>
-            <input
-              type="number"
-              value={question.max || ''}
-              onChange={(e) => handleChange('max', Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-            <label className="block text-sm font-medium text-gray-700 mb-1 mt-4">Step</label>
-            <input
-              type="number"
-              value={question.step || ''}
-              onChange={(e) => handleChange('step', Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Min/Max Values</label>
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <input
+                  type="number"
+                  value={question.min || ''}
+                  onChange={(e) => handleChange('min', Number(e.target.value))}
+                  placeholder="Min value"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              <div className="flex-1">
+                <input
+                  type="number"
+                  value={question.max || ''}
+                  onChange={(e) => handleChange('max', Number(e.target.value))}
+                  placeholder="Max value"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+            </div>
           </div>
         )}
 

@@ -57,10 +57,6 @@ const QuestionRenderer: React.FC<QuestionRendererProps> = ({
 }) => {
   const { updateAnswer, questions: allQuestionsFromContext } = useQuestions(); 
 
-  if (mode === 'preview' && question.type === 'columns') {
-    console.log(`[Preview QR ${question.id}] Attempting to render as columns. Layout:`, JSON.parse(JSON.stringify(question.columnLayout)));
-  }
-
   const handleAnswerChange = (value: any, unit?: string) => {
     if (onChange) {
       onChange(question.id, value, unit);
@@ -78,23 +74,8 @@ const QuestionRenderer: React.FC<QuestionRendererProps> = ({
         {columnWidths.map((widthPercentage, colIndex) => {
           const columnQuestionIds = columnChildren[colIndex] || [];
           const questionsInColumn = columnQuestionIds
-            .map(id => {
-              const foundQ = allQuestionsFromContext.find(q => q.id === id);
-              if (mode === 'preview') {
-                console.log(`[Preview QR ${question.id}] Column ${colIndex}, Looking for Child ID ${id}, Found:`, !!foundQ, foundQ ? `Type: ${foundQ.type}` : 'N/A');
-                if (!foundQ) {
-                  console.warn(`[Preview QR ${question.id}] Child ID ${id} NOT FOUND in allQuestionsFromContext. Current allQuestionsFromContext IDs:`, allQuestionsFromContext.map(q => q.id));
-                  // For more detailed debugging, you could log the entire allQuestionsFromContext, but it might be large:
-                  // console.log(`[Preview QR ${question.id}] Full allQuestionsFromContext:`, JSON.parse(JSON.stringify(allQuestionsFromContext)));
-                }
-              }
-              return foundQ;
-            })
+            .map(id => allQuestionsFromContext.find(q => q.id === id))
             .filter((q): q is Question => q !== undefined);
-
-          if (mode === 'preview') {
-            console.log(`[Preview QR ${question.id}] Column ${colIndex}, Resolved question IDs:`, questionsInColumn.map(q => q.id));
-          }
           
           let widthClass = 'w-full';
           if (widthPercentage === 25) widthClass = 'w-1/4';
@@ -110,9 +91,9 @@ const QuestionRenderer: React.FC<QuestionRendererProps> = ({
                   key={qInCol.id}
                   question={qInCol}
                   answers={answers}
-                  required={qInCol.required} 
+                  required={qInCol.required}
                   onChange={onChange}
-                  mode={mode} // Pass mode down
+                  mode={mode}
                 />
               ))}
             </div>
@@ -127,10 +108,8 @@ const QuestionRenderer: React.FC<QuestionRendererProps> = ({
     const answer = answers[questionId];
     if (!answer?.value) return null;
 
-    // Special handling for matrix type dependencies
-    const dependentQuestion = allQuestionsFromContext.find((q: Question) => q.id === questionId);
+    const dependentQuestion = allQuestionsFromContext.find(q => q.id === questionId);
     if (dependentQuestion?.type === 'matrix') {
-      // Safely cast matrix values
       const matrixValue = value as unknown as Record<string, Record<string, boolean>>;
       const matrixAnswer = answer.value as Record<string, Record<string, boolean>>;
       
@@ -143,26 +122,20 @@ const QuestionRenderer: React.FC<QuestionRendererProps> = ({
       
       if (!matches) return null;
     } else if (Array.isArray(value)) {
-      // Handle array values (e.g., for checkbox questions)
       if (Array.isArray(answer.value)) {
-        // Safe type check for array includes
         const answerArray = answer.value as any[];
         if (!value.some(v => answerArray.includes(v))) return null;
       } else {
         if (!value.includes(answer.value as string)) return null;
       }
     } else if (Array.isArray(answer.value)) {
-      // Handle case where the answer is an array but the condition value isn't
       const answerArray = answer.value as any[];
       if (!answerArray.includes(value)) return null;
     } else {
-      // Handle simple value comparison
       const answerStr = valueToString(answer.value);
       const valueStr = valueToString(value);
-      // Ensure that dependentQuestion is not of type 'columns' before trying to hide it based on condition.
-      // Column containers themselves shouldn't be hidden by conditions, their children might be.
       if (dependentQuestion?.type !== 'columns' && answerStr !== valueStr) return null;
-      if (answerStr !== valueStr && question.type !== 'columns') return null; // General case, hide if not matching and not a column container
+      if (answerStr !== valueStr && question.type !== 'columns') return null;
     }
   }
 
@@ -290,9 +263,8 @@ const QuestionRenderer: React.FC<QuestionRendererProps> = ({
             mode={mode}
           />
         );
-      // Ensure 'columns' type does not fall into default
       case 'columns':
-        return null; // Should be handled by the logic at the top of the component
+        return null;
       default:
         return <div>Unknown question type: {question.type}</div>;
     }
@@ -300,7 +272,7 @@ const QuestionRenderer: React.FC<QuestionRendererProps> = ({
 
   return (
     <div className="mb-6">
-      <div className="mb-4">
+      <div className="mb-4" key={question.id}>
         {renderQuestionByType()}
       </div>
       
@@ -311,9 +283,9 @@ const QuestionRenderer: React.FC<QuestionRendererProps> = ({
               key={subQuestion.id}
               question={subQuestion}
               answers={answers}
-              required={subQuestion.required ?? false} // Corrected: use subQuestion's required status
+              required={subQuestion.required ?? false}
               onChange={onChange}
-              mode={mode} // Pass mode down to subquestions
+              mode={mode}
             />
           ))}
         </div>
